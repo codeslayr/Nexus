@@ -44,6 +44,7 @@ class Settings(BaseSettings):
         return self.gemini_embedding_dimensions if self.llm_provider == "gemini" else self.openai_embedding_dimensions
 
     # ── PostgreSQL ───────────────────────────────────────────────────────────
+    database_url: Optional[str] = None
     postgres_host: str = "localhost"
     postgres_port: int = 5432
     postgres_db: str = "graphrag"
@@ -52,6 +53,13 @@ class Settings(BaseSettings):
 
     @property
     def postgres_dsn(self) -> str:
+        if self.database_url:
+            url = self.database_url
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql+psycopg://", 1)
+            elif url.startswith("postgresql://"):
+                url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+            return url
         return (
             f"postgresql+psycopg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
@@ -60,6 +68,8 @@ class Settings(BaseSettings):
     @property
     def postgres_dsn_sync(self) -> str:
         """Synchronous psycopg DSN (no driver prefix)."""
+        if self.database_url:
+            return self.database_url
         return (
             f"host={self.postgres_host} port={self.postgres_port} "
             f"dbname={self.postgres_db} user={self.postgres_user} "
