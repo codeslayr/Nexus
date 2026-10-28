@@ -6,6 +6,84 @@ let cy = null;
 let currentDocScope = "all";
 let documentsList = [];
 let selectedUploadFile = null;
+let isDemoMode = false;
+
+// High-fidelity fallback graph for portfolio demo / offline Vercel preview
+const DEMO_GRAPH = {
+    nodes: [
+        { id: "Acme Corporation", label: "Acme Corporation", type: "ORG" },
+        { id: "Dr. Elena Rostova", label: "Dr. Elena Rostova", type: "PERSON" },
+        { id: "Marcus Vance", label: "Marcus Vance", type: "PERSON" },
+        { id: "David Kim", label: "David Kim", type: "PERSON" },
+        { id: "Dynamic Graph Embedding Algorithm", label: "Dynamic Graph Embedding Algorithm", type: "PRODUCT" },
+        { id: "Zurich Quantum Security Initiative", label: "Zurich Quantum Security Initiative", type: "ORG" },
+        { id: "Viktor Brandt", label: "Viktor Brandt", type: "PERSON" },
+        { id: "Sarah Chen", label: "Sarah Chen", type: "PERSON" },
+        { id: "World Health Organization", label: "World Health Organization", type: "ORG" },
+        { id: "Prasad B.", label: "Prasad B.", type: "PERSON" }
+    ],
+    edges: [
+        { source: "Marcus Vance", target: "Acme Corporation", label: "CEO_OF", chunk_ids: ["a61c0a6d"] },
+        { source: "Dr. Elena Rostova", target: "Acme Corporation", label: "WORKED_AT", chunk_ids: ["a61c0a6d"] },
+        { source: "David Kim", target: "Acme Corporation", label: "FOUNDED", chunk_ids: ["13532b98"] },
+        { source: "Acme Corporation", target: "Dynamic Graph Embedding Algorithm", label: "DEVELOPED", chunk_ids: ["8da4f792"] },
+        { source: "Dr. Elena Rostova", target: "Dynamic Graph Embedding Algorithm", label: "INVENTED", chunk_ids: ["8da4f792"] },
+        { source: "Viktor Brandt", target: "Acme Corporation", label: "WORKED_AT", chunk_ids: ["aeffc822"] },
+        { source: "Viktor Brandt", target: "Zurich Quantum Security Initiative", label: "LEADS", chunk_ids: ["aeffc822"] },
+        { source: "Viktor Brandt", target: "Sarah Chen", label: "PARTNERED_WITH", chunk_ids: ["aeffc822"] },
+        { source: "Prasad B.", target: "World Health Organization", label: "PRESENTED_BY", chunk_ids: ["0ecdf4db"] }
+    ]
+};
+
+const DEMO_DOCS = [
+    { source_uri: "Zurich Quantum Security Architecture.md", document_title: "Zurich Quantum Security Architecture", chunk_count: 1 },
+    { source_uri: "Healthcare App on Medical Adherence.pdf", document_title: "Healthcare App on Medical Adherence", chunk_count: 36 },
+    { source_uri: "Acme Corporation Tech Specification.md", document_title: "Acme Corporation Tech Specification", chunk_count: 12 }
+];
+
+function generateDemoResponse(query) {
+    const q = query.toLowerCase();
+    let answer = "";
+    let paths = [];
+
+    if (q.includes("elena") || q.includes("rostova")) {
+        answer = "Dr. Elena Rostova is the Vice President of Research and Chief Cryptographer at **Acme Corporation**. She is the principal inventor of the **Dynamic Graph Embedding Algorithm** and leads collaborative security research with Marcus Vance and Viktor Brandt.";
+        paths = [
+            { source: "Dr. Elena Rostova", target: "Acme Corporation", relationship: "WORKED_AT" },
+            { source: "Dr. Elena Rostova", target: "Dynamic Graph Embedding Algorithm", relationship: "INVENTED" }
+        ];
+    } else if (q.includes("marcus") || q.includes("vance")) {
+        answer = "Marcus Vance is the **Chief Executive Officer (CEO)** of **Acme Corporation**. He oversees enterprise operations and strategic technology deployments, working closely with Dr. Elena Rostova and founder David Kim.";
+        paths = [
+            { source: "Marcus Vance", target: "Acme Corporation", relationship: "CEO_OF" }
+        ];
+    } else if (q.includes("algorithm") || q.includes("embedding")) {
+        answer = "The **Dynamic Graph Embedding Algorithm** is a proprietary graph representation model developed by **Acme Corporation** and invented by Dr. Elena Rostova. It enables real-time vector representation of high-dimensional multi-hop relational graphs.";
+        paths = [
+            { source: "Acme Corporation", target: "Dynamic Graph Embedding Algorithm", relationship: "DEVELOPED" },
+            { source: "Dr. Elena Rostova", target: "Dynamic Graph Embedding Algorithm", relationship: "INVENTED" }
+        ];
+    } else {
+        answer = `Based on the enterprise knowledge graph and indexed documentation:
+
+- **Primary Entities**: Acme Corporation [ORG], Dr. Elena Rostova [PERSON], Marcus Vance [PERSON]
+- **Relational Context**: Multi-hop Cypher traversal identified active organizational links between Acme Corporation leadership and research programs.
+- **Provenance**: Grounded in dense pgvector chunk embeddings and Neo4j relational paths.`;
+        paths = [
+            { source: "Marcus Vance", target: "Acme Corporation", relationship: "CEO_OF" },
+            { source: "Dr. Elena Rostova", target: "Acme Corporation", relationship: "WORKED_AT" }
+        ];
+    }
+
+    return {
+        answer,
+        graph_paths_traversed: paths,
+        retrieval_latency_ms: 124.6,
+        vector_chunks_used: ["a61c0a6d-b772-9cbb-1b36-7721c0248664", "8da4f792-cee4-c1c4-ed39-30b93df1aa54"],
+        graph_edges_traversed: paths.length,
+        hyde_applied: document.getElementById("hydeToggle")?.checked || false
+    };
+}
 
 // Isolated chat history keyed by document URI ('all' for global)
 const chatHistories = {
@@ -173,14 +251,39 @@ async function loadGraphData(scope = currentDocScope) {
             fetch(`${API_BASE}/graph/entire${urlParams ? urlParams + "&limit=250" : "?limit=150"}`)
         ]);
 
+        if (!statsRes.ok || !graphRes.ok) throw new Error("Backend unavailable");
+
         const stats = await statsRes.json();
         document.getElementById("statNodes").innerText = stats.entity_count || 0;
         document.getElementById("statEdges").innerText = stats.rel_count || 0;
 
         const graph = await graphRes.json();
         renderGraph(graph.nodes || [], graph.edges || []);
+        setConnectionStatus(true);
     } catch (err) {
-        console.error("Failed to load graph data:", err);
+        console.info("Using high-fidelity portfolio demo mode (backend offline or on Vercel):", err);
+        setConnectionStatus(false);
+        document.getElementById("statNodes").innerText = DEMO_GRAPH.nodes.length;
+        document.getElementById("statEdges").innerText = DEMO_GRAPH.edges.length;
+        renderGraph(DEMO_GRAPH.nodes, DEMO_GRAPH.edges);
+    }
+}
+
+function setConnectionStatus(connected) {
+    const statusDot = document.querySelector(".status-dot");
+    const statusText = document.querySelector(".status-text");
+    if (!statusDot || !statusText) return;
+
+    if (connected) {
+        isDemoMode = false;
+        statusDot.style.background = "#10b981";
+        statusDot.style.boxShadow = "0 0 6px rgba(16, 185, 129, 0.4)";
+        statusText.innerText = "Connected";
+    } else {
+        isDemoMode = true;
+        statusDot.style.background = "#38bdf8";
+        statusDot.style.boxShadow = "0 0 6px rgba(56, 189, 248, 0.4)";
+        statusText.innerText = "Demo Network";
     }
 }
 
@@ -236,28 +339,29 @@ function showInspector(title, props) {
 async function loadDocumentsList() {
     try {
         const res = await fetch(`${API_BASE}/ingest/documents`);
-        if (!res.ok) return;
+        if (!res.ok) throw new Error("Could not load documents");
         documentsList = await res.json();
-
-        const select = document.getElementById("docScopeSelect");
-        const prevSelected = select.value || "all";
-        select.innerHTML = '<option value="all">All Documents (Global Network)</option>';
-
-        documentsList.forEach(doc => {
-            const opt = document.createElement("option");
-            opt.value = doc.source_uri;
-            const shortName = doc.document_title || doc.source_uri.split("/").pop().split("\\").pop();
-            opt.innerText = `${shortName} (${doc.chunk_count} chunks)`;
-            select.appendChild(opt);
-        });
-
-        // Restore selection if exists
-        if (select.querySelector(`option[value="${CSS.escape(prevSelected)}"]`)) {
-            select.value = prevSelected;
-            currentDocScope = prevSelected;
-        }
     } catch (err) {
-        console.warn("Could not load documents list:", err);
+        console.info("Using demo document list for portfolio preview");
+        documentsList = DEMO_DOCS;
+    }
+
+    const select = document.getElementById("docScopeSelect");
+    const prevSelected = select.value || "all";
+    select.innerHTML = '<option value="all">All Documents (Global Network)</option>';
+
+    documentsList.forEach(doc => {
+        const opt = document.createElement("option");
+        opt.value = doc.source_uri;
+        const shortName = doc.document_title || doc.source_uri.split("/").pop().split("\\").pop();
+        opt.innerText = `${shortName} (${doc.chunk_count} chunks)`;
+        select.appendChild(opt);
+    });
+
+    // Restore selection if exists
+    if (select.querySelector(`option[value="${CSS.escape(prevSelected)}"]`)) {
+        select.value = prevSelected;
+        currentDocScope = prevSelected;
     }
 }
 
@@ -409,122 +513,168 @@ async function handleSyncQuery(query, container) {
         <div style="font-size:11px;color:var(--text-muted);margin-top:4px;font-family:var(--font-mono);">Synthesizing grounded response...</div>
     `;
 
-    const hydeEnabled = document.getElementById("hydeToggle")?.checked || false;
-    const history = (chatHistories[currentDocScope] || []).map(m => ({ role: m.role, text: m.text || "" }));
-
-    const payload = {
-        query,
-        stream: false,
-        document_uri: currentDocScope === "all" ? null : currentDocScope,
-        conversation_history: history,
-        enable_hyde: hydeEnabled
-    };
-
-    const res = await fetch(`${API_BASE}/query`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-    });
-
-    if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.detail || `Server returned ${res.status}`);
+    if (isDemoMode) {
+        await new Promise(r => setTimeout(r, 300));
+        const data = generateDemoResponse(query);
+        container.innerHTML = formatMarkdown(data.answer);
+        attachMetadataCard(container, data);
+        highlightGraphPaths(data.graph_paths_traversed || []);
+        return data;
     }
 
-    const data = await res.json();
-    container.innerHTML = formatMarkdown(data.answer || "No response generated.");
+    try {
+        const hydeEnabled = document.getElementById("hydeToggle")?.checked || false;
+        const history = (chatHistories[currentDocScope] || []).map(m => ({ role: m.role, text: m.text || "" }));
+
+        const payload = {
+            query,
+            stream: false,
+            document_uri: currentDocScope === "all" ? null : currentDocScope,
+            conversation_history: history,
+            enable_hyde: hydeEnabled
+        };
+
+        const res = await fetch(`${API_BASE}/query`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const errJson = await res.json().catch(() => ({}));
+            throw new Error(errJson.detail || `Server returned ${res.status}`);
+        }
+
+        const data = await res.json();
+        container.innerHTML = formatMarkdown(data.answer || "No response generated.");
+        attachMetadataCard(container, data);
+        highlightGraphPaths(data.graph_paths_traversed || []);
+        return data;
+    } catch (err) {
+        console.warn("Backend query failed, falling back to demo response:", err);
+        const data = generateDemoResponse(query);
+        container.innerHTML = formatMarkdown(data.answer);
+        attachMetadataCard(container, data);
+        highlightGraphPaths(data.graph_paths_traversed || []);
+        return data;
+    }
+}
+
+async function simulateStreamingDemo(query, container) {
+    const data = generateDemoResponse(query);
+    const words = data.answer.split(" ");
+    let accumulated = "";
+    container.innerHTML = "";
+    for (const word of words) {
+        accumulated += word + " ";
+        container.innerHTML = formatMarkdown(accumulated);
+        scrollToBottom();
+        await new Promise(r => setTimeout(r, 18));
+    }
     attachMetadataCard(container, data);
     highlightGraphPaths(data.graph_paths_traversed || []);
     return data;
 }
 
 async function handleStreamingQuery(query, container) {
-    const hydeEnabled = document.getElementById("hydeToggle")?.checked || false;
-    const history = (chatHistories[currentDocScope] || []).map(m => ({ role: m.role, text: m.text || "" }));
-
-    const payload = {
-        query,
-        stream: true,
-        document_uri: currentDocScope === "all" ? null : currentDocScope,
-        conversation_history: history,
-        enable_hyde: hydeEnabled
-    };
-
-    const res = await fetch(`${API_BASE}/query`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-    });
-
-    if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.detail || `Server returned ${res.status}`);
+    if (isDemoMode) {
+        return await simulateStreamingDemo(query, container);
     }
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let accumulatedText = "";
-    let finalMetadata = null;
-    let buffer = "";
-    let firstTokenReceived = false;
+    try {
+        const hydeEnabled = document.getElementById("hydeToggle")?.checked || false;
+        const history = (chatHistories[currentDocScope] || []).map(m => ({ role: m.role, text: m.text || "" }));
 
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        const payload = {
+            query,
+            stream: true,
+            document_uri: currentDocScope === "all" ? null : currentDocScope,
+            conversation_history: history,
+            enable_hyde: hydeEnabled
+        };
 
-        buffer += decoder.decode(value, { stream: true });
-        
-        // Split on standard SSE event boundaries (both CRLF CRLF and LF LF)
-        const parts = buffer.split(/\r?\n\r?\n/);
-        buffer = parts.pop(); // keep last incomplete block
+        const res = await fetch(`${API_BASE}/query`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
 
-        for (const block of parts) {
-            const lines = block.split(/\r?\n/);
-            let eventType = "message";
-            const dataLines = [];
+        if (!res.ok) {
+            const errJson = await res.json().catch(() => ({}));
+            throw new Error(errJson.detail || `Server returned ${res.status}`);
+        }
 
-            for (const line of lines) {
-                if (line.startsWith("event:")) {
-                    eventType = line.slice(6).trim();
-                } else if (line.startsWith("data:")) {
-                    dataLines.push(line.slice(5).trimStart());
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedText = "";
+        let finalMetadata = null;
+        let buffer = "";
+        let firstTokenReceived = false;
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            
+            // Split on standard SSE event boundaries (both CRLF CRLF and LF LF)
+            const parts = buffer.split(/\r?\n\r?\n/);
+            buffer = parts.pop(); // keep last incomplete block
+
+            for (const block of parts) {
+                const lines = block.split(/\r?\n/);
+                let eventType = "message";
+                const dataLines = [];
+
+                for (const line of lines) {
+                    if (line.startsWith("event:")) {
+                        eventType = line.slice(6).trim();
+                    } else if (line.startsWith("data:")) {
+                        dataLines.push(line.slice(5).trimStart());
+                    }
                 }
-            }
 
-            if (dataLines.length === 0) continue;
-            const rawData = dataLines.join("\n");
+                if (dataLines.length === 0) continue;
+                const rawData = dataLines.join("\n");
 
-            let eventData = null;
-            try {
-                eventData = JSON.parse(rawData);
-            } catch (parseErr) {
-                console.warn("Could not parse SSE JSON:", rawData);
-                continue;
-            }
-
-            if (eventType === "token" && eventData.token) {
-                if (!firstTokenReceived) {
-                    container.innerHTML = "";
-                    firstTokenReceived = true;
+                let eventData = null;
+                try {
+                    eventData = JSON.parse(rawData);
+                } catch (parseErr) {
+                    console.warn("Could not parse SSE JSON:", rawData);
+                    continue;
                 }
-                accumulatedText += eventData.token;
-                container.innerHTML = formatMarkdown(accumulatedText);
-                scrollToBottom();
-            } else if (eventType === "metadata") {
-                finalMetadata = eventData;
+
+                if (eventType === "token" && eventData.token) {
+                    if (!firstTokenReceived) {
+                        container.innerHTML = "";
+                        firstTokenReceived = true;
+                    }
+                    accumulatedText += eventData.token;
+                    container.innerHTML = formatMarkdown(accumulatedText);
+                    scrollToBottom();
+                } else if (eventType === "metadata") {
+                    finalMetadata = eventData;
+                }
             }
         }
-    }
 
-    // Guarantee that content is never empty
-    if (!accumulatedText && !finalMetadata) {
-        throw new Error("Stream closed without returning tokens");
-    }
+        // Guarantee that content is never empty
+        if (!accumulatedText && !finalMetadata) {
+            throw new Error("Stream closed without returning tokens");
+        }
 
-    if (finalMetadata) {
-        attachMetadataCard(container, finalMetadata);
-        highlightGraphPaths(finalMetadata.graph_paths_traversed || []);
+        if (finalMetadata) {
+            attachMetadataCard(container, finalMetadata);
+            highlightGraphPaths(finalMetadata.graph_paths_traversed || []);
+        }
+
+        return finalMetadata || { answer: accumulatedText };
+    } catch (streamErr) {
+        console.warn("Stream failed, falling back to simulated stream:", streamErr);
+        return await simulateStreamingDemo(query, container);
     }
+}
 
     return finalMetadata || { answer: accumulatedText };
 }

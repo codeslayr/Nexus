@@ -1,0 +1,13 @@
+# Exclude Python backend and heavy dependencies from Vercel static build
+api/
+pipelines/
+src/
+eval/
+infra/
+data/
+scratch/
+tests/
+requirements.txt
+docker-compose.yml
+run_server.py
+*.md

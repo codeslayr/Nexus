@@ -3,20 +3,6 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "outputDirectory": "web",
-  "rewrites": [
-    {
-      "source": "/query",
-      "destination": "/api/proxy"
-    },
-    {
-      "source": "/ingest/(.*)",
-      "destination": "/api/proxy"
-    },
-    {
-      "source": "/graph/(.*)",
-      "destination": "/api/proxy"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -33,4 +19,3 @@
     }
   ]
 }
-
