@@ -1,0 +1,2 @@
+retrieval_source,faithfulness,answer_relevancy,context_precision,context_recall
+Hybrid GraphRAG,1.0,0.6535,0.8792,1.0

@@ -1,0 +1,22 @@
+[
+  {
+    "question": "Who is Marcus Vance and what is his role at Acme Corporation?",
+    "ground_truth": "Marcus Vance is the Chief Executive Officer of Acme Corporation, appointed in January 2023. He previously served as Senior Vice President of Engineering at NeuralSphere.",
+    "reference_chunk_ids": []
+  },
+  {
+    "question": "What technology did CyberCore Technologies develop before being acquired by Acme Corporation?",
+    "ground_truth": "CyberCore Technologies developed the HyperVector neural indexing engine for billion-scale vector similarity search, which was later integrated into Acme's flagship ApexCore platform.",
+    "reference_chunk_ids": []
+  },
+  {
+    "question": "Who directs the Quantum AI Lab in Zurich, Switzerland?",
+    "ground_truth": "Dr. Elena Rostova directs the Quantum AI Lab located in Zurich, Switzerland, reporting directly to Chief Technology Officer Sarah Chen.",
+    "reference_chunk_ids": []
+  },
+  {
+    "question": "What algorithm was co-authored by David Kim and Dr. Elena Rostova?",
+    "ground_truth": "Senior Principal Engineer David Kim and Dr. Elena Rostova co-authored the patented Dynamic Graph Embedding Algorithm connecting ApexCore to distributed knowledge graph backends.",
+    "reference_chunk_ids": []
+  }
+]

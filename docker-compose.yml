@@ -1,0 +1,106 @@
+version: "3.9"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Enterprise Hybrid GraphRAG — Docker Compose
+# Services: Neo4j 5.x, PostgreSQL 16 + pgvector
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Neo4j 5.x ──────────────────────────────────────────────────────────────
+  neo4j:
+    image: neo4j:5.21-community
+    container_name: graphrag-neo4j
+    restart: unless-stopped
+    ports:
+      - "7474:7474"   # HTTP browser
+      - "7687:7687"   # Bolt protocol
+    environment:
+      NEO4J_AUTH: "neo4j/neo4j_secret"
+      # APOC plugin — required for graph algorithms and merge procedures
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_apoc_export_file_enabled: "true"
+      NEO4J_apoc_import_file_enabled: "true"
+      NEO4J_apoc_import_file_use__neo4j__config: "true"
+      # Memory tuning — adjust per host RAM
+      NEO4J_server_memory_heap_initial__size: "512m"
+      NEO4J_server_memory_heap_max__size: "2g"
+      NEO4J_server_memory_pagecache_size: "1g"
+      # Allow unrestricted APOC procedures (scope to production allowlist in prod)
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+      NEO4J_dbms_security_procedures_allowlist: "apoc.*"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
+      - neo4j_plugins:/plugins
+    healthcheck:
+      test: ["CMD", "neo4j", "status"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # ── PostgreSQL 16 + pgvector ────────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: graphrag-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: graphrag
+      POSTGRES_USER: graphrag
+      POSTGRES_PASSWORD: graphrag_secret
+      # Tune for embedding workloads
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Init scripts run in alphabetical order on first container start
+      - ./infra/postgres-init:/docker-entrypoint-initdb.d:ro
+    command: >
+      postgres
+        -c shared_preload_libraries=''
+        -c max_connections=200
+        -c shared_buffers=512MB
+        -c effective_cache_size=1536MB
+        -c maintenance_work_mem=256MB
+        -c checkpoint_completion_target=0.9
+        -c wal_buffers=16MB
+        -c work_mem=8MB
+        -c random_page_cost=1.1
+        -c effective_io_concurrency=200
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U graphrag -d graphrag"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── Redis (task queue for async ingestion jobs) ─────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: graphrag-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  neo4j_import:
+  neo4j_plugins:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: graphrag-net

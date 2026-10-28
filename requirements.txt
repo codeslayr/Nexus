@@ -1,0 +1,75 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Enterprise GraphRAG — Python Dependencies
+# Pin exact versions for reproducible production deployments
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── LangChain Core ────────────────────────────────────────────────────────────
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-google-genai>=2.0.0
+langchain-openai>=0.3.0
+langchain-community>=0.3.0
+langchain-neo4j>=0.4.0
+langchain-postgres>=0.0.12
+langchain-text-splitters>=0.3.0
+
+# ── Graph Database ────────────────────────────────────────────────────────────
+neo4j==5.28.1
+
+# ── Vector / Relational Database ─────────────────────────────────────────────
+psycopg[binary]==3.2.4
+psycopg-pool==3.2.6
+pgvector==0.3.6
+sqlalchemy==2.0.41
+
+# ── FastAPI + Async HTTP ──────────────────────────────────────────────────────
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+httpx==0.28.1
+sse-starlette==2.2.1
+python-multipart>=0.0.9
+
+# ── Pydantic ─────────────────────────────────────────────────────────────────
+pydantic==2.11.4
+pydantic-settings==2.9.1
+
+# ── LLM / AI ─────────────────────────────────────────────────────────────────
+openai==1.79.0
+tiktoken==0.9.0
+sentence-transformers==3.4.1   # cross-encoder reranking
+
+# ── Document Processing ───────────────────────────────────────────────────────
+pypdf==5.4.0
+python-docx==1.1.2
+unstructured[pdf,docx]==0.17.2
+markdown-it-py==3.0.0
+
+# ── Async / Concurrency ───────────────────────────────────────────────────────
+anyio==4.9.0
+asyncio-throttle==1.0.2
+
+# ── Task Queue ────────────────────────────────────────────────────────────────
+celery[redis]==5.4.0
+redis==5.2.1
+
+# ── Evaluation ────────────────────────────────────────────────────────────────
+ragas==0.2.15
+datasets==3.5.0
+pandas==2.2.3
+numpy==2.2.5
+
+# ── Observability & Logging ───────────────────────────────────────────────────
+structlog==25.3.0
+opentelemetry-api==1.33.1
+opentelemetry-sdk==1.33.1
+opentelemetry-instrumentation-fastapi==0.54b1
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest==8.3.5
+pytest-asyncio==0.26.0
+pytest-mock==3.14.0
+
+# ── Dev tooling ───────────────────────────────────────────────────────────────
+python-dotenv==1.1.0
+rich==14.0.0
+typer==0.15.2

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus GraphRAG — Enterprise Knowledge & Graph Intelligence</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2'><circle cx='6' cy='6' r='3'/><circle cx='18' cy='6' r='3'/><circle cx='18' cy='18' r='3'/><circle cx='6' cy='18' r='3'/><line x1='9' y1='6' x2='15' y2='6'/><line x1='18' y1='9' x2='18' y2='15'/><line x1='9' y1='18' x2='15' y2='18'/><line x1='6' y1='9' x2='6' y2='15'/></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation Bar -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="brand-mark">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="6" cy="6" r="3"></circle>
+                        <circle cx="18" cy="6" r="3"></circle>
+                        <circle cx="18" cy="18" r="3"></circle>
+                        <circle cx="6" cy="18" r="3"></circle>
+                        <line x1="9" y1="6" x2="15" y2="6"></line>
+                        <line x1="18" y1="9" x2="18" y2="15"></line>
+                        <line x1="9" y1="18" x2="15" y2="18"></line>
+                        <line x1="6" y1="9" x2="6" y2="15"></line>
+                        <line x1="8.5" y1="8.5" x2="15.5" y2="15.5"></line>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <div class="brand-title-row">
+                        <span class="brand-name">Nexus GraphRAG</span>
+                        <span class="badge-tag">Studio</span>
+                    </div>
+                    <span class="brand-subtitle">Hybrid Vector &amp; Knowledge Graph Retrieval</span>
+                </div>
+            </div>
+
+            <div class="header-center">
+                <div class="stack-tags">
+                    <span class="tech-chip">PostgreSQL</span>
+                    <span class="tech-chip">pgvector</span>
+                    <span class="tech-chip">Neo4j</span>
+                    <span class="tech-chip">Gemini</span>
+                </div>
+            </div>
+
+            <div class="header-stats" id="graphStats">
+                <button class="btn btn-secondary btn-sm" id="btnOpenManageDocs">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg>
+                    Documents
+                </button>
+                <button class="btn btn-primary btn-sm" id="btnOpenUpload">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Upload
+                </button>
+                <div class="divider-v"></div>
+                <div class="metric-pill">
+                    <span class="metric-val" id="statNodes">0</span>
+                    <span class="metric-label">Entities</span>
+                </div>
+                <div class="metric-pill">
+                    <span class="metric-val" id="statEdges">0</span>
+                    <span class="metric-label">Relations</span>
+                </div>
+                <div class="status-indicator" title="Connected to PostgreSQL &amp; Neo4j">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Connected</span>
+                </div>
+                <button class="btn-icon-subtle" id="btnRefreshGraph" title="Refresh Graph Data">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Workspace: Split View -->
+        <main class="main-workspace">
+            <!-- Left Panel: Chat & Retrieval Workspace -->
+            <section class="chat-panel">
+                <div class="chat-header">
+                    <div class="scope-container">
+                        <span class="scope-prefix">Scope</span>
+                        <div class="select-wrapper">
+                            <select id="docScopeSelect" class="doc-select">
+                                <option value="all">All Documents (Global Network)</option>
+                            </select>
+                            <svg class="select-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                        </div>
+                    </div>
+                    <div class="chat-controls">
+                        <label class="toggle-control" title="Generate Hypothetical Document Embeddings for broader semantic vector recall">
+                            <input type="checkbox" id="hydeToggle">
+                            <span class="toggle-label">HyDE</span>
+                        </label>
+                        <label class="toggle-control" title="Stream tokens in real-time">
+                            <input type="checkbox" id="streamToggle" checked>
+                            <span class="toggle-label">Stream</span>
+                        </label>
+                        <button class="btn-ghost-sm" id="btnExportChat" title="Export Chat as Markdown">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Export
+                        </button>
+                    </div>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message assistant">
+                        <div class="message-avatar">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+                        </div>
+                        <div class="message-content">
+                            <div class="welcome-hero">
+                                <h3 class="hero-title">Graph Intelligence Workspace</h3>
+                                <p class="hero-desc">Ask questions across indexed documents and multihop entity graphs. Retrieval fuses dense vector embeddings with Neo4j relational paths via Reciprocal Rank Fusion.</p>
+                            </div>
+                            <div class="suggested-queries-section">
+                                <span class="suggest-heading">Suggested Inquiries</span>
+                                <div class="suggested-queries" id="suggestedQueries">
+                                    <button class="suggest-chip" onclick="askQuestion(this.dataset.query)" data-query="Who is Dr. Elena Rostova and what did CyberCore Technologies build?">
+                                        <span>Who is Dr. Elena Rostova and what did CyberCore Technologies build?</span>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                                    </button>
+                                    <button class="suggest-chip" onclick="askQuestion(this.dataset.query)" data-query="Who is Marcus Vance and how is David Kim connected to Elena Rostova?">
+                                        <span>Who is Marcus Vance and how is David Kim connected to Elena Rostova?</span>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                                    </button>
+                                    <button class="suggest-chip" onclick="askQuestion(this.dataset.query)" data-query="What is the Dynamic Graph Embedding Algorithm?">
+                                        <span>What is the Dynamic Graph Embedding Algorithm?</span>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <form class="chat-input-bar" id="chatForm">
+                    <div class="input-container">
+                        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="queryInput" placeholder="Query knowledge graph and documentation..." autocomplete="off" required>
+                        <div class="kbd-hint">Return ↵</div>
+                    </div>
+                    <button type="submit" id="sendBtn" class="btn btn-send" title="Send Query">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Right Panel: Live Knowledge Graph Visualizer -->
+            <section class="graph-panel">
+                <div class="graph-toolbar">
+                    <div class="toolbar-left">
+                        <span class="toolbar-title">Knowledge Graph</span>
+                        <span class="graph-mode-badge" id="graphModeBadge">Full Network</span>
+                        <div class="type-legend">
+                            <span class="legend-dot dot-person" title="Person (Entity)"></span>
+                            <span class="legend-dot dot-org" title="Organization (Entity)"></span>
+                            <span class="legend-dot dot-prod" title="Product (Entity)"></span>
+                            <span class="legend-dot dot-loc" title="Location (Entity)"></span>
+                            <span class="legend-dot dot-tech" title="Technology / Concept (Entity)"></span>
+                        </div>
+                    </div>
+                    <div class="toolbar-actions">
+                        <div class="filter-wrapper">
+                            <svg class="filter-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="nodeFilter" placeholder="Filter node..." class="input-filter">
+                        </div>
+                        <button class="btn-ghost-sm" id="btnResetView" title="Center &amp; Fit Graph">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+                            Fit
+                        </button>
+                        <button class="btn-ghost-sm" id="btnExportGraph" title="Export Graph as JSON">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            JSON
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Cytoscape Canvas -->
+                <div id="cy" class="cy-container"></div>
+
+                <!-- Node Inspector Drawer -->
+                <div class="inspector-drawer" id="nodeInspector">
+                    <div class="inspector-header">
+                        <div class="inspector-header-left">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <h3 id="inspectorTitle">Node Inspector</h3>
+                        </div>
+                        <button class="btn-close" id="btnCloseInspector" aria-label="Close">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
+                    <div class="inspector-body" id="inspectorBody">
+                        <p class="placeholder-text">Select any node or relationship in the knowledge graph to view canonical attributes, degree centrality, and linked PostgreSQL chunk IDs.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Document Upload Modal -->
+    <div class="modal-backdrop" id="uploadModal" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <h3>Upload Enterprise Document</h3>
+                </div>
+                <button class="btn-close" id="btnCloseUpload" aria-label="Close">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">Supported formats: PDF, DOCX, Markdown, and TXT. Documents are chunked into pgvector dense embeddings and extracted into canonical Neo4j graph entities.</p>
+                <div class="upload-dropzone" id="dropZone">
+                    <div class="dropzone-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                    </div>
+                    <div class="dropzone-text">Drop file here or <span class="browse-link">browse system</span></div>
+                    <span class="dropzone-sub">Max file size: 25MB</span>
+                    <input type="file" id="fileInput" accept=".pdf,.docx,.md,.txt" style="display: none;">
+                    <div class="selected-file-info" id="selectedFileInfo"></div>
+                </div>
+                <div class="form-group">
+                    <label for="docTitleInput" class="form-label">Document Title (Optional)</label>
+                    <input type="text" id="docTitleInput" class="form-input" placeholder="e.g. Q4 Financial Report, Infrastructure RFC">
+                </div>
+                <div class="upload-progress-container" id="uploadProgress" style="display: none;">
+                    <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar"></div></div>
+                    <div class="progress-status-text" id="progressStatus">Ingesting chunks and extracting entities...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btnCancelUpload">Cancel</button>
+                <button class="btn btn-primary" id="btnSubmitUpload" disabled>Start Ingestion</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Documents Modal -->
+    <div class="modal-backdrop" id="manageDocsModal" style="display: none;">
+        <div class="modal-card modal-card-lg">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg>
+                    <h3>Ingested Document Inventory</h3>
+                </div>
+                <button class="btn-close" id="btnCloseManageDocs" aria-label="Close">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">Document inventory in PostgreSQL pgvector. Deletion removes dense vector chunks and prunes orphaned graph entities in Neo4j.</p>
+                <div class="docs-table-container">
+                    <table class="docs-table">
+                        <thead>
+                            <tr>
+                                <th>Document</th>
+                                <th>Chunks</th>
+                                <th>Ingestion Date</th>
+                                <th style="text-align: right;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="docsTableBody">
+                            <tr><td colspan="4" class="table-empty">Loading inventory...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btnCloseManageDocsFooter">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

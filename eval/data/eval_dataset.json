@@ -1,0 +1,27 @@
+[
+  {
+    "question": "Who is the CEO of Microsoft and what products are they responsible for?",
+    "ground_truth": "Satya Nadella is the CEO of Microsoft. He oversees Azure cloud, Office 365, and Windows product lines.",
+    "reference_chunk_ids": []
+  },
+  {
+    "question": "Which companies did Elon Musk acquire and what were the acquisition prices?",
+    "ground_truth": "Elon Musk acquired Twitter for approximately $44 billion in October 2022 and renamed it X.",
+    "reference_chunk_ids": []
+  },
+  {
+    "question": "What is the relationship between OpenAI and Microsoft?",
+    "ground_truth": "Microsoft invested $13 billion in OpenAI and is the exclusive cloud provider for OpenAI's infrastructure.",
+    "reference_chunk_ids": []
+  },
+  {
+    "question": "Which companies are competing in the AI large language model space?",
+    "ground_truth": "OpenAI (GPT-4), Google (Gemini), Anthropic (Claude), and Meta (LLaMA) are the primary competitors in the LLM space.",
+    "reference_chunk_ids": []
+  },
+  {
+    "question": "What financial metrics did Apple report in their latest earnings?",
+    "ground_truth": "This depends on ingested documents and will vary by dataset.",
+    "reference_chunk_ids": []
+  }
+]
