@@ -1,6 +1,9 @@
 // Nexus GraphRAG Studio — Client Controller
 // Supports both standalone FastAPI hosting and Vercel cloud deployment
-const API_BASE = window.GRAPH_RAG_API_URL || "";
+let savedApiUrl = localStorage.getItem("GRAPH_RAG_API_URL") || "";
+if (savedApiUrl.endsWith("/")) savedApiUrl = savedApiUrl.slice(0, -1);
+let API_BASE = savedApiUrl || window.GRAPH_RAG_API_URL || "";
+if (API_BASE.endsWith("/")) API_BASE = API_BASE.slice(0, -1);
 
 let cy = null;
 let currentDocScope = "all";
@@ -97,6 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupEventListeners();
     setupUploadModal();
     setupManageDocsModal();
+    setupApiConfigModal();
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -1141,4 +1145,59 @@ function exportGraphAsJson() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+}
+
+function setupApiConfigModal() {
+    const modal = document.getElementById("apiConfigModal");
+    const openBtn = document.getElementById("btnOpenApiConfig");
+    const closeBtn = document.getElementById("btnCloseApiConfig");
+    const saveBtn = document.getElementById("btnSaveApiConfig");
+    const testBtn = document.getElementById("btnTestApiConnection");
+    const input = document.getElementById("apiUrlInput");
+    const resultDiv = document.getElementById("apiTestResult");
+
+    if (!modal || !openBtn) return;
+
+    openBtn.addEventListener("click", () => {
+        input.value = localStorage.getItem("GRAPH_RAG_API_URL") || window.GRAPH_RAG_API_URL || "";
+        resultDiv.style.display = "none";
+        modal.style.display = "flex";
+    });
+
+    closeBtn?.addEventListener("click", () => {
+        modal.style.display = "none";
+    });
+
+    modal.addEventListener("click", (e) => {
+        if (e.target === modal) modal.style.display = "none";
+    });
+
+    testBtn?.addEventListener("click", async () => {
+        let testUrl = (input.value || "").trim();
+        if (testUrl.endsWith("/")) testUrl = testUrl.slice(0, -1);
+        resultDiv.style.display = "block";
+        resultDiv.innerHTML = `<span style="color:var(--text-muted);">Testing connection to ${testUrl || "relative origin"}...</span>`;
+        try {
+            const res = await fetch(`${testUrl}/graph/stats`);
+            if (!res.ok) throw new Error(`HTTP status ${res.status}`);
+            const data = await res.json();
+            resultDiv.innerHTML = `<span style="color:#10b981; font-weight:500;">✓ Connected successfully! Found ${data.entity_count || 0} entities &amp; ${data.rel_count || 0} relations.</span>`;
+        } catch (err) {
+            resultDiv.innerHTML = `<span style="color:#f87171; font-weight:500;">✗ Connection failed: ${escapeHtml(err.message)}</span>`;
+        }
+    });
+
+    saveBtn?.addEventListener("click", () => {
+        let newUrl = (input.value || "").trim();
+        if (newUrl.endsWith("/")) newUrl = newUrl.slice(0, -1);
+        if (newUrl) {
+            localStorage.setItem("GRAPH_RAG_API_URL", newUrl);
+        } else {
+            localStorage.removeItem("GRAPH_RAG_API_URL");
+        }
+        API_BASE = newUrl;
+        modal.style.display = "none";
+        loadGraphData(currentDocScope);
+        loadDocumentsList();
+    });
 }
