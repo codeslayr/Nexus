@@ -680,9 +680,6 @@ async function handleStreamingQuery(query, container) {
     }
 }
 
-    return finalMetadata || { answer: accumulatedText };
-}
-
 // ──────────────────────────────────────────────────────────────────────────────
 // Markdown & DOM Helpers
 // ──────────────────────────────────────────────────────────────────────────────
