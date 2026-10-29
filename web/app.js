@@ -1064,6 +1064,20 @@ function setupManageDocsModal() {
                 target.setAttribute("disabled", "true");
 
                 try {
+                    if (isDemoMode) {
+                        // In demo preview mode, simulate document removal locally
+                        await new Promise(r => setTimeout(r, 400));
+                        documentsList = documentsList.filter(d => d.source_uri !== uri);
+                        await renderDocsTable();
+                        loadDocumentsList();
+                        if (currentDocScope === uri) {
+                            const select = document.getElementById("docScopeSelect");
+                            if (select) select.value = "all";
+                            switchDocumentScope("all");
+                        }
+                        return;
+                    }
+
                     const res = await fetch(`${API_BASE}/ingest/documents?source_uri=${encodeURIComponent(uri)}`, {
                         method: "DELETE"
                     });
@@ -1079,6 +1093,12 @@ function setupManageDocsModal() {
                         switchDocumentScope("all");
                     }
                 } catch(err) {
+                    if (isDemoMode) {
+                        documentsList = documentsList.filter(d => d.source_uri !== uri);
+                        await renderDocsTable();
+                        loadDocumentsList();
+                        return;
+                    }
                     alert(`Failed to delete: ${err.message}`);
                     target.innerText = "Remove";
                     target.removeAttribute("disabled");
