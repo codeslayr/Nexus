@@ -119,7 +119,7 @@ def create_app() -> FastAPI:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
                 "error": "Internal server error",
-                "detail": str(exc) if get_settings().app_env != "production" else None,
+                "detail": str(exc),
             },
         )
 
