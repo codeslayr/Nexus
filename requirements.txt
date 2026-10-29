@@ -40,6 +40,7 @@ markdown-it-py==3.0.0
 # ── Async / Concurrency ───────────────────────────────────────────────────────
 anyio==4.9.0
 asyncio-throttle==1.0.2
+redis==5.2.1
 
 # ── Logging & Utilities ───────────────────────────────────────────────────────
 structlog==25.3.0
